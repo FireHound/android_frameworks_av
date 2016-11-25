@@ -127,8 +127,20 @@ static int32_t getColorFormat(const char* colorFormat) {
     }
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420SP)) {
+#ifdef USE_SAMSUNG_COLORFORMAT
+        static const int OMX_SEC_COLOR_FormatNV12LPhysicalAddress = 0x7F000002;
+        return OMX_SEC_COLOR_FormatNV12LPhysicalAddress;
+#else
         return OMX_COLOR_FormatYUV420SemiPlanar;
+#endif
     }
+
+#ifdef USE_SAMSUNG_CAMERAFORMAT_NV21
+    if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420SP_NV21)) {
+        static const int OMX_SEC_COLOR_FormatNV21Linear = 0x7F000011;
+        return OMX_SEC_COLOR_FormatNV21Linear;
+    }
+#endif /* USE_SAMSUNG_CAMERAFORMAT_NV21 */
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV422I)) {
         return OMX_COLOR_FormatYCbYCr;
@@ -144,6 +156,10 @@ static int32_t getColorFormat(const char* colorFormat) {
 
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_ANDROID_OPAQUE)) {
         return OMX_COLOR_FormatAndroidOpaque;
+    }
+
+    if (!strcmp(colorFormat, "YVU420SemiPlanar")) {
+        return OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
     }
 
     ALOGE("Uknown color format (%s), please add it to "
@@ -1259,11 +1275,17 @@ void CameraSource::processBufferQueueFrame(BufferItem& buffer) {
 MetadataBufferType CameraSource::metaDataStoredInVideoBuffers() const {
     ALOGV("metaDataStoredInVideoBuffers");
 
+#ifdef CAMCORDER_GRALLOC_SOURCE
+    return kMetadataBufferTypeGrallocSource;
+#endif
+
     // Output buffers will contain metadata if camera sends us buffer in metadata mode or via
     // buffer queue.
     switch (mVideoBufferMode) {
+#ifndef EXYNOS4_ENHANCEMENTS
         case hardware::ICamera::VIDEO_BUFFER_MODE_DATA_CALLBACK_METADATA:
             return kMetadataBufferTypeNativeHandleSource;
+#endif
         case hardware::ICamera::VIDEO_BUFFER_MODE_BUFFER_QUEUE:
             return kMetadataBufferTypeANWBuffer;
         default:
